@@ -53,7 +53,7 @@ enum Subcommands {
     },
     #[command(subcommand, about = "List and export flights")]
     Flights(FlightSubcommands),
-    #[command(about = "Output NMEA strings")]
+    #[command(subcommand, about = "Output NMEA strings")]
     Gps,
 }
 
@@ -231,30 +231,38 @@ fn run(args: Args) -> Result<(), Error> {
                     let sirin = SirinDev::connect()?.open()?;
                     println!("Writing flight data to {}", csv.to_string_lossy());
                     let mut file = File::create(csv)?;
-                    file.write_all(b"time,pos_x,pos_y,pos_z,vel_x,vel_y,vel_z,accel_x,accel_y,accel_z,altitude\n")?;
-
+                    file.write_all(b"time,altitude,pressure,temp,accel_x,accel_y,accel_z,ang_vel_x,ang_vel_y,ang_vel_z,high_g_x,high_g_y,high_g_z,mag_x,mag_y,mag_z\n")?;
                     sirin.send_packet(&InPacket::ReadFlight(index))?;
                     for packet in sirin.receive_packets() {
-                        if let OutPacket::LogEntry(entry) = packet? {
-                            #[allow(irrefutable_let_patterns)]
-                            if let Log::State(state) = entry.log {
+                        if let OutPacket::Data(flight_data) = packet? {
+                            //println!("Log entry detected!");
+                                let imu_accel = flight_data.data.imu.accel.unwrap();
+                                let ang_vel = flight_data.data.imu.angular_vel.unwrap();
+                                let high_g_imu = flight_data.data.high_g_imu.accel.unwrap();
+                                let mag = flight_data.data.magnetometer.mag.unwrap();
+                                //println!("SirinData entry detected!");
                                 writeln!(
                                     file,
-                                    "{},{},{},{},{},{},{},{},{},{}",
-                                    entry.time,
-                                    state.pos.x.value,
-                                    state.pos.y.value,
-                                    state.pos.z.value,
-                                    state.vel.x.value,
-                                    state.vel.y.value,
-                                    state.vel.z.value,
-                                    state.accel.x.value,
-                                    state.accel.y.value,
-                                    state.accel.z.value,
+                                    "{},{},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?}",
+                                    flight_data.data.time.value,
+                                    flight_data.state.altitude.value,
+                                    flight_data.data.baro.pressure.unwrap().value,
+                                    flight_data.data.baro.temperature,
+                                    imu_accel.x,
+                                    imu_accel.y,
+                                    imu_accel.z,
+                                    ang_vel.x,
+                                    ang_vel.y,
+                                    ang_vel.z,
+                                    high_g_imu.x,
+                                    high_g_imu.y,
+                                    high_g_imu.z,
+                                    mag.x,
+                                    mag.y,
+                                    mag.z
                                 )?;
                             }
                         }
-                    }
                     println!("Done.");
                 },
             }
