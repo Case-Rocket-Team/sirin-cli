@@ -234,20 +234,21 @@ fn run(args: Args) -> Result<(), Error> {
                     file.write_all(b"time,altitude,pressure,temp,accel_x,accel_y,accel_z,ang_vel_x,ang_vel_y,ang_vel_z,high_g_x,high_g_y,high_g_z,mag_x,mag_y,mag_z\n")?;
                     sirin.send_packet(&InPacket::ReadFlight(index))?;
                     for packet in sirin.receive_packets() {
-                        if let OutPacket::Data(flight_data) = packet? {
-                            //println!("Log entry detected!");
-                                let imu_accel = flight_data.data.imu.accel.unwrap();
-                                let ang_vel = flight_data.data.imu.angular_vel.unwrap();
-                                let high_g_imu = flight_data.data.high_g_imu.accel.unwrap();
-                                let mag = flight_data.data.magnetometer.mag.unwrap();
+                        if let OutPacket::LogEntry(entry) = packet? {
+                            #[allow(irrefutable_let_patterns)]
+                            if let Log::Data(data) = entry.log {
+                                let imu_accel = data.imu.accel.unwrap();
+                                let ang_vel = data.imu.angular_vel.unwrap();
+                                let high_g_imu = data.high_g_imu.accel.unwrap();
+                                let mag = data.magnetometer.mag.unwrap();
                                 //println!("SirinData entry detected!");
                                 writeln!(
                                     file,
                                     "{},{},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?}",
-                                    flight_data.data.time.value,
-                                    flight_data.state.altitude.value,
-                                    flight_data.data.baro.pressure.unwrap().value,
-                                    flight_data.data.baro.temperature,
+                                    data.time.value,
+                                    data.altitude,
+                                    data.baro.pressure.unwrap().value,
+                                    data.baro.temperature,
                                     imu_accel.x,
                                     imu_accel.y,
                                     imu_accel.z,
@@ -260,7 +261,7 @@ fn run(args: Args) -> Result<(), Error> {
                                     mag.x,
                                     mag.y,
                                     mag.z
-                                )?;
+                                )?;}
                             }
                         }
                     println!("Done.");
