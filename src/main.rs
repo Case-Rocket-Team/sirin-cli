@@ -231,7 +231,7 @@ fn run(args: Args) -> Result<(), Error> {
                     let sirin = SirinDev::connect()?.open()?;
                     println!("Writing flight data to {}", csv.to_string_lossy());
                     let mut file = File::create(csv)?;
-                    file.write_all(b"time,altitude,pressure,temp,accel_x,accel_y,accel_z,ang_vel_x,ang_vel_y,ang_vel_z,high_g_x,high_g_y,high_g_z,mag_x,mag_y,mag_z\n")?;
+                    file.write_all(b"time (ms),altitude (m),pressure (Pa),temp (C),accel_x (\xB5G),accel_y (\xB5G),accel_z (\xB5G),ang_vel_x (\xB5\xB0/s),ang_vel_y (\xB5\xB0/s),ang_vel_z (\xB5\xB0/s),high_g_x (\xB5G),high_g_y (\xB5G),high_g_z (\xB5G),mag_x (G),mag_y (G),mag_z (G)\n")?;
                     sirin.send_packet(&InPacket::ReadFlight(index))?;
                     for packet in sirin.receive_packets() {
                         if let OutPacket::LogEntry(entry) = packet? {
@@ -248,7 +248,7 @@ fn run(args: Args) -> Result<(), Error> {
                                     data.time.value,
                                     data.altitude,
                                     data.baro.pressure.unwrap().value,
-                                    data.baro.temperature,
+                                    data.baro.temperature.unwrap().value,
                                     imu_accel.x,
                                     imu_accel.y,
                                     imu_accel.z,
