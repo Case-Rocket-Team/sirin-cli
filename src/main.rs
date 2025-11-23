@@ -234,40 +234,50 @@ fn run(args: Args) -> Result<(), Error> {
                     file.write_all(b"time (ms),altitude (m),pressure (Pa),temp (C),accel_x (\xB5G),accel_y (\xB5G),accel_z (\xB5G),ang_vel_x (\xB5\xB0/s),ang_vel_y (\xB5\xB0/s),ang_vel_z (\xB5\xB0/s),high_g_x (\xB5G),high_g_y (\xB5G),high_g_z (\xB5G),mag_x (G),mag_y (G),mag_z (G)\n")?;
                     sirin.send_packet(&InPacket::ReadFlight(index))?;
                     for packet in sirin.receive_packets() {
-                        if let OutPacket::LogEntry(entry) = packet? {
-                            #[allow(irrefutable_let_patterns)]
-                            if let Log::Data(data) = entry.log {
-                                let imu_accel = data.imu.accel.unwrap();
-                                let ang_vel = data.imu.angular_vel.unwrap();
-                                let high_g_imu = data.high_g_imu.accel.unwrap();
-                                let mag = data.magnetometer.mag.unwrap();
-                                //println!("SirinData entry detected!");
-                                writeln!(
-                                    file,
-                                    "{},{},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?}",
-                                    data.time.value,
-                                    data.altitude,
-                                    data.baro.pressure.unwrap().value,
-                                    data.baro.temperature.unwrap().value,
-                                    imu_accel.x,
-                                    imu_accel.y,
-                                    imu_accel.z,
-                                    ang_vel.x,
-                                    ang_vel.y,
-                                    ang_vel.z,
-                                    high_g_imu.x,
-                                    high_g_imu.y,
-                                    high_g_imu.z,
-                                    mag.x,
-                                    mag.y,
-                                    mag.z
-                                )?;}
+                        match packet.unwrap() {
+                            OutPacket::LogEntry(entry) => {
+                                    #[allow(irrefutable_let_patterns)]
+                                    if let Log::Data(data) = entry.log {
+                                        let imu_accel = data.imu.accel.unwrap();
+                                        let ang_vel = data.imu.angular_vel.unwrap();
+                                        let high_g_imu = data.high_g_imu.accel.unwrap();
+                                        let mag = data.magnetometer.mag.unwrap();
+                                        //println!("SirinData entry detected!");
+                                        writeln!(
+                                            file,
+                                            "{},{},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?}",
+                                            data.time.value,
+                                            data.altitude,
+                                            data.baro.pressure.unwrap().value,
+                                            data.baro.temperature.unwrap().value,
+                                            imu_accel.x,
+                                            imu_accel.y,
+                                            imu_accel.z,
+                                            ang_vel.x,
+                                            ang_vel.y,
+                                            ang_vel.z,
+                                            high_g_imu.x,
+                                            high_g_imu.y,
+                                            high_g_imu.z,
+                                            mag.x,
+                                            mag.y,
+                                            mag.z
+                                        )?;}
+                                    }
+                            OutPacket::DeployedApoAt(time) => {
+                                println!("Apo deployed at {} milliseconds", time);
+                            }
+                            OutPacket::DeployedMainAt(time) => {
+                                println!("Main deployed at {} milliseconds", time);
+                            }
+                            _ => {}
+                                }
+
                             }
                         }
+                    }
                     println!("Done.");
                 },
-            }
-        },
         Subcommands::Gps => {
             let sirin = SirinDev::connect()?.open()?;
 
