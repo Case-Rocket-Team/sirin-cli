@@ -18,6 +18,7 @@ use sirin_shared::song::{FromSong, FromSongError, SongSize, ToSong, ToSongError}
 use sirin_shared::time::AbsoluteTimeReference;
 use sirin_shared::usb::{USB_EP_IN_ADDR, USB_EP_OUT_ADDR, USB_PID, USB_VID};
 use sirin_shared::packet::ByteArrayStr;
+
 #[derive(Parser)]
 #[command(version, about)]
 struct Args {
@@ -90,7 +91,7 @@ fn main() {
 }
 
 fn run(args: Args) -> Result<(), Error> {
-    let _ = set_time();
+    //let _ = set_time();
 
     match args.command {
         Subcommands::Ls => {
@@ -113,7 +114,6 @@ fn run(args: Args) -> Result<(), Error> {
         Subcommands::Tail => {
             let sirin = SirinDev::connect()?.open()?;
             sirin.send_packet(&InPacket::Tail(true))?;
-            
             for packet in sirin.receive_packets() {
                 match packet {
                     Ok(packet) => println!("{:?}", packet),
@@ -231,44 +231,69 @@ fn run(args: Args) -> Result<(), Error> {
                     let sirin = SirinDev::connect()?.open()?;
                     println!("Writing flight data to {}", csv.to_string_lossy());
                     let mut file = File::create(csv)?;
-                    file.write_all(b"time (ms),altitude (m),pressure (Pa),temp (C),accel_x (\xB5G),accel_y (\xB5G),accel_z (\xB5G),ang_vel_x (\xB5\xB0/s),ang_vel_y (\xB5\xB0/s),ang_vel_z (\xB5\xB0/s),high_g_x (\xB5G),high_g_y (\xB5G),high_g_z (\xB5G),mag_x (G),mag_y (G),mag_z (G)\n")?;
+                    file.write_all(b"time (ms), flight_mode, data_altitude (m), state_altitude (m), apogee(m), GPS_lat (deg), GPS_lon (deg), GPS_ecef_x (m), GPS_ecef_y (m), GPS_ecef_z (m), pos_x (deg), pos_y (deg), pos_z (deg), vel_x (m/s), vel_y (m/s), vel_z (m/s), pressure (Pa),temp (C),accel_x (\xB5G),accel_y (\xB5G),accel_z (\xB5G),ang_vel_x (\xB5\xB0/s),ang_vel_y (\xB5\xB0/s),ang_vel_z (\xB5\xB0/s),high_g_x (\xB5G),high_g_y (\xB5G),high_g_z (\xB5G),mag_x (G),mag_y (G),mag_z (G)\n")?;
                     sirin.send_packet(&InPacket::ReadFlight(index))?;
                     for packet in sirin.receive_packets() {
-                        if let OutPacket::LogEntry(entry) = packet? {
-                            #[allow(irrefutable_let_patterns)]
-                            if let Log::Data(data) = entry.log {
-                                let imu_accel = data.imu.accel.unwrap();
-                                let ang_vel = data.imu.angular_vel.unwrap();
-                                let high_g_imu = data.high_g_imu.accel.unwrap();
-                                let mag = data.magnetometer.mag.unwrap();
-                                //println!("SirinData entry detected!");
-                                writeln!(
-                                    file,
-                                    "{},{},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?}",
-                                    data.time.value,
-                                    data.altitude,
-                                    data.baro.pressure.unwrap().value,
-                                    data.baro.temperature.unwrap().value,
-                                    imu_accel.x,
-                                    imu_accel.y,
-                                    imu_accel.z,
-                                    ang_vel.x,
-                                    ang_vel.y,
-                                    ang_vel.z,
-                                    high_g_imu.x,
-                                    high_g_imu.y,
-                                    high_g_imu.z,
-                                    mag.x,
-                                    mag.y,
-                                    mag.z
-                                )?;}
+                        match packet.unwrap() {
+                            OutPacket::LogEntry(entry) => {
+                                    #[allow(irrefutable_let_patterns)]
+                                    if let Log::DataState(datastate) = entry.log {
+                                        let imu_accel = datastate.data.imu.accel.unwrap();
+                                        let ang_vel = datastate.data.imu.angular_vel.unwrap();
+                                        let high_g_imu = datastate.data.high_g_imu.accel.unwrap();
+                                        let mag = datastate.data.magnetometer.mag.unwrap();
+                                        //println!("SirinDataState entry detected!");
+                                        writeln!(
+                                            file,
+                                            "{},{},{},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?}",
+                                            datastate.data.time.value,
+                                            datastate.mode,
+                                            datastate.data.altitude,
+                                            datastate.altitude,
+                                            datastate.apogee,
+                                            datastate.gps_fix.lat,
+                                            datastate.gps_fix.lon,
+                                            datastate.gps_fix.pos.x.value,
+                                            datastate.gps_fix.pos.y.value,
+                                            datastate.gps_fix.pos.z.value,
+                                            datastate.pos.x.value,
+                                            datastate.pos.y.value,
+                                            datastate.pos.z.value,
+                                            datastate.vel.x.value,
+                                            datastate.vel.y.value,
+                                            datastate.vel.z.value,
+                                            datastate.data.baro.pressure.unwrap().value,
+                                            datastate.data.baro.temperature.unwrap().value,
+                                            imu_accel.x,
+                                            imu_accel.y,
+                                            imu_accel.z,
+                                            ang_vel.x,
+                                            ang_vel.y,
+                                            ang_vel.z,
+                                            high_g_imu.x,
+                                            high_g_imu.y,
+                                            high_g_imu.z,
+                                            mag.x,
+                                            mag.y,
+                                            mag.z
+                                        )?;}
+                                    }
+                            OutPacket::DeployedApoAt(time) => {
+                                println!("Apo deployed at {} milliseconds", time);
+                            }
+                            OutPacket::DeployedMainAt(time) => {
+                                println!("Main deployed at {} milliseconds", time);
+                            }
+                            _ => {}
+                                }
+
                             }
                         }
+                    }
                     println!("Done.");
                 },
-            }
-        },
-        Subcommands::Gps => {
+        //TODO: Fix this
+        /*Subcommands::Gps => {
             let sirin = SirinDev::connect()?.open()?;
 
             loop {
@@ -278,7 +303,8 @@ fn run(args: Args) -> Result<(), Error> {
 
                 let _ = stdout().write(&msg);
             }
-        }
+        }*/
+        Subcommands::Gps =>{}
     }
 
     Ok(())
@@ -331,7 +357,6 @@ impl SirinDev {
         let mut count = 0;
         for device in rusb::devices().unwrap().iter() {
             let device_desc = device.device_descriptor().unwrap();
-
             if device_desc.vendor_id() == USB_VID && device_desc.product_id() == USB_PID {
                 count += 1;
                 let Ok(handler) = device.open() else {
@@ -357,21 +382,25 @@ impl SirinDev {
 
     fn connect() -> Result<Self, Error> {
         for device in rusb::devices().unwrap().iter() {
+            println!("Does this ever run 1");
             let device_desc = device.device_descriptor().unwrap();
-
+            println!("Does this ever run 2");
+            println!("Device VID: {}", device_desc.vendor_id());
+            println!("Device PID: {}", device_desc.product_id());
             if device_desc.vendor_id() == USB_VID && device_desc.product_id() == USB_PID {
+                println!("Does this ever run 3");
                 return Ok(Self {
                     device
                 })
             }
         }
-
+        println!("Does this ever run 4");
         return Err(Error::NoSirin)
     }
 
     pub fn open(&self) -> Result<SirinHandle, Error> {
         let dev = self.device.open()?;
-        dev.claim_interface(0)?;
+        dev.claim_interface(0).unwrap();
         Ok(SirinHandle { dev })
     }
 }
@@ -390,7 +419,9 @@ impl SirinHandle {
     pub fn send_packet(&self, packet: &InPacket) -> Result<(), Error> {
         let mut buf = [0u8; MAX_OUT_PACKET_SIZE];
         packet.to_song(&mut buf)?;
+        println!("Attempting Writebulk!");
         self.dev.write_bulk(USB_EP_OUT_ADDR, &mut buf[0..packet.song_size()], Duration::from_secs(0))?;
+        println!("WriteBulk worked!");
         Ok(())
     }
 
@@ -426,9 +457,9 @@ impl <'a> Iterator for PacketIterator<'a> {
         if let Ok(OutPacket::Ok) = packet {
             self.is_done = true;
             None
-        } else if let Ok(OutPacket::Error(err)) = packet {
+        } else if let Ok(OutPacket::Null) = packet {
             self.is_done = true;
-            println!("{}", err);
+            println!("Packet was empty");
             exit(1)
         } else {
             Some(packet)
