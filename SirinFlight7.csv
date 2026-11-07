@@ -1,0 +1,1 @@
+time (ms), data_altitude (m), state_altitude (m), apogee(m), GPS_lat (deg), GPS_lon (deg), GPS_z (?), pos_x (deg), pos_y (deg), pos_z (deg), vel_x (m/s), vel_y (m/s), vel_z (m/s), pressure (Pa),temp (C),accel_x (µG),accel_y (µG),accel_z (µG),ang_vel_x (µ°/s),ang_vel_y (µ°/s),ang_vel_z (µ°/s),high_g_x (µG),high_g_y (µG),high_g_z (µG),mag_x (G),mag_y (G),mag_z (G)
