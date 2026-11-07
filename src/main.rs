@@ -240,12 +240,11 @@ fn run(args: Args) -> Result<(), Error> {
                                     if let Log::DataState(datastate) = entry.log {
                                         let imu_accel = datastate.data.imu.accel.unwrap();
                                         let ang_vel = datastate.data.imu.angular_vel.unwrap();
-                                        let high_g_imu = datastate.data.high_g_imu.accel.unwrap();
                                         let mag = datastate.data.magnetometer.mag.unwrap();
                                         //println!("SirinDataState entry detected!");
                                         writeln!(
                                             file,
-                                            "{},{},{},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?}",
+                                            "{},{},{},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?}",
                                             datastate.data.time.value,
                                             datastate.mode,
                                             datastate.data.altitude,
@@ -270,9 +269,6 @@ fn run(args: Args) -> Result<(), Error> {
                                             ang_vel.x,
                                             ang_vel.y,
                                             ang_vel.z,
-                                            high_g_imu.x,
-                                            high_g_imu.y,
-                                            high_g_imu.z,
                                             mag.x,
                                             mag.y,
                                             mag.z
