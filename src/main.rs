@@ -91,7 +91,7 @@ fn main() {
 }
 
 fn run(args: Args) -> Result<(), Error> {
-    //let _ = set_time();
+    let _ = set_time();
 
     match args.command {
         Subcommands::Ls => {
